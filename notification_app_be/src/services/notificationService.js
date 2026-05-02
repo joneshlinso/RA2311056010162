@@ -1,42 +1,72 @@
-// Pure JavaScript Template Processing
-const TEMPLATES = {
-    "WELCOME_EMAIL": "Hello {{name}}, welcome to Affordmed! Your registered email is {{email}}.",
-    "MAINTENANCE_ALERT": "URGENT: Vehicle {{vehicle_id}} requires immediate maintenance."
+/**
+ * Simple priority handler for Stage 6. 
+ * I used a basic sorted array approach because it's easier to debug 
+ * than a full binary heap for this specific use case.
+ */
+class MessageQueue {
+    constructor() {
+        this.list = [];
+    }
+    
+    // Lower number = Higher priority (1 is top)
+    addToQueue(data, priorityLevel) {
+        this.list.push({ data, p: priorityLevel });
+        // Keeping it sorted so the next() call is always O(1)
+        this.list.sort((a, b) => a.p - b.p);
+    }
+    
+    getNext() {
+        return this.list.shift();
+    }
+    
+    isEmpty() {
+        return this.list.length === 0;
+    }
+}
+
+const MSG_TEMPLATES = {
+    "WELCOME_EMAIL": "Hey {{name}}, thanks for joining us! Your email is set as {{email}}.",
+    "MAINTENANCE_ALERT": "Warning: Vehicle {{vehicle_id}} is due for service immediately."
 };
 
-/**
- * Replaces {{variables}} in a string with actual data without external libraries.
- */
-function processTemplate(templateId, payloadData) {
-    let templateStr = TEMPLATES[templateId];
+const internalQueue = new MessageQueue();
+const PRIORITY_LEVELS = { 'HIGH': 1, 'MEDIUM': 2, 'LOW': 3 };
+
+function fillTemplate(id, data) {
+    let raw = MSG_TEMPLATES[id];
+    if (!raw) throw new Error(`Template not found: ${id}`);
     
-    if (!templateStr) {
-        throw new Error(`Template ID '${templateId}' not found.`);
-    }
-
-    for (const key in payloadData) {
-        const placeholder = `{{${key}}}`;
-        templateStr = templateStr.split(placeholder).join(payloadData[key]);
-    }
-
-    return templateStr;
+    // Manual replacement to avoid heavy regex
+    Object.keys(data).forEach(key => {
+        raw = raw.replace(`{{${key}}}`, data[key]);
+    });
+    return raw;
 }
 
 /**
- * Simulates sending a notification
+ * Main dispatcher for Stage 6. 
+ * It handles the priority mapping and simulates the delivery delay.
  */
-async function dispatchNotification(userId, channel, templateId, payloadData) {
-    const finalMessage = processTemplate(templateId, payloadData);
-
-    await new Promise(resolve => setTimeout(resolve, 800));
+async function dispatchNotification(targetUser, type, template, vars, level = 'LOW') {
+    const body = fillTemplate(template, vars);
+    
+    // Queue it up based on priority
+    const priorityScore = PRIORITY_LEVELS[level] || 3;
+    internalQueue.addToQueue({ targetUser, type, body }, priorityScore);
+    
+    // Pick the top item (Stage 6 logic)
+    const task = internalQueue.getNext();
+    
+    // Artificial wait to mimic API latency
+    await new Promise(r => setTimeout(r, 600));
 
     return {
-        delivery_id: `msg_${Math.random().toString(36).substr(2, 9)}`,
-        user_id: userId,
-        channel: channel,
-        status: "DELIVERED",
-        message_body: finalMessage,
-        timestamp: new Date().toISOString()
+        delivery_id: `id_${Math.random().toString(16).slice(2, 10)}`,
+        user: targetUser,
+        urgency: level,
+        status: "SENT",
+        content: body,
+        sent_at: new Date().toISOString()
     };
 }
 
