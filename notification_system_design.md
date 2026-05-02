@@ -32,3 +32,10 @@ For the actual delivery logic, I used a Priority Queue. This ensures that an "Em
 
 **How it works in my code:**
 I mapped priorities to numeric values (High=1, Low=3). The dispatcher always pulls the message with the lowest numeric value first. This keeps the latency low for critical updates.
+
+## Output Proof
+### Vehicle Maintenance Scheduler
+![Vehicle Scheduler Output](./output/vehicle_scheduler_output.png)
+
+### Notification System
+![Notification System Output](./output/notification_output.png)
